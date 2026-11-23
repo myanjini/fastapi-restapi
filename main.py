@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
 
 app = FastAPI(title="도서 관리 API")
 
@@ -10,18 +11,21 @@ BOOKS = [
     {"id": 4, "title": "알기 쉬운 네트워크", "author": "박서준", "price": 20000},
 ]
 
+class BookCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=100)
+    author: str = Field(min_length=1, max_length=50)
+    price: int = Field(ge=0, le=1_000_000)
+
 @app.get("/")
 def read_root():
     return {"message": "도서 관리 API에 오신 것을 환영합니다."}
 
 @app.get("/health")
 def health_check():
-    # 서버가 요청에 응답할 수 있는지 확인하는 용도입니다.
     return {"status": "ok"}
 
 @app.get("/books")
 def list_books(author: str | None = None):
-    # author가 없으면 전체 목록을, 있으면 그 저자의 도서만 돌려줍니다.
     if author is None:
         return BOOKS
     return [book for book in BOOKS if book["author"] == author]
@@ -31,5 +35,11 @@ def get_book(book_id: int):
     for book in BOOKS:
         if book["id"] == book_id:
             return book
-    # 반복문을 다 돌아도 찾지 못하면 404 오류를 보냅니다.
     raise HTTPException(status_code=404, detail="도서를 찾을 수 없습니다.")
+
+@app.post("/books")
+def create_book(book_in: BookCreate):
+    new_id = max(book["id"] for book in BOOKS) + 1 if BOOKS else 1
+    book = {"id": new_id, **book_in.model_dump()}
+    BOOKS.append(book)
+    return book
