@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -40,6 +40,10 @@ class Book(Base):
 
     # 도서를 등록한 사용자. 인증을 붙이기 전에 등록한 도서는 값이 없습니다.
     owner_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    # 재고 수량. 기존 도서는 0권으로 시작합니다.
+    stock: Mapped[int] = mapped_column(default=0, server_default="0")
+    # 이 도서의 재고 기록. 도서를 지우면 기록도 함께 지웁니다.
+    stock_logs: Mapped[list["StockLog"]] = relationship(cascade="all, delete-orphan")
 
 class RefreshToken(Base):
     __tablename__ = "refresh_tokens"
@@ -50,3 +54,14 @@ class RefreshToken(Base):
     token_hash: Mapped[str] = mapped_column(String(64), unique=True)
     expires_at: Mapped[datetime]  # 만료 시각(UTC)
     revoked: Mapped[bool] = mapped_column(default=False)  # True면 더는 쓸 수 없는 토큰
+
+class StockLog(Base):
+    """재고가 언제, 얼마나, 왜 바뀌었는지 남기는 기록입니다."""
+
+    __tablename__ = "stock_logs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    book_id: Mapped[int] = mapped_column(ForeignKey("books.id"))
+    change: Mapped[int]  # 늘어나면 양수, 줄어들면 음수
+    reason: Mapped[str] = mapped_column(String(20))
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())  # 데이터베이스가 현재 시각을 넣습니다.

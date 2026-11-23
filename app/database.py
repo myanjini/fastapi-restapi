@@ -17,5 +17,8 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        db.rollback()  # 요청 처리 중 오류가 나면 확정하지 않은 변경을 모두 되돌립니다.
+        raise
     finally:
         db.close()

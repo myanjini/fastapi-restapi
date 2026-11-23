@@ -40,6 +40,7 @@ class BookCreate(BaseModel):
     price: int = Field(ge=0, le=1_000_000, examples=[27000])
     isbn: str | None = Field(default=None, pattern=r"^\d{13}$", examples=["9791100000035"])
     published_year: int | None = Field(default=None, ge=1900, le=2100)
+    stock: int = Field(default=0, ge=0, le=1000, examples=[3])  # 처음 들여오는 수량
 
 class BookUpdate(BaseModel):
     """일부 수정(PATCH)에 쓰는 입력 모델. 모든 항목이 선택입니다."""
@@ -59,8 +60,14 @@ class BookRead(BaseModel):
     price: int
     isbn: str | None = None
     published_year: int | None = None
+    stock: int
     author: AuthorRead
     owner_id: int | None = None
+
+class StockChange(BaseModel):
+    """재고 변경 요청 본문"""
+    change: int = Field(ge=-1000, le=1000, examples=[5])  # 늘릴 때 양수, 줄일 때 음수
+    reason: str = Field(min_length=1, max_length=20, examples=["입고"])
 
 class BookPage(BaseModel):
     """목록 응답. 현재 페이지의 도서와 전체 개수를 함께 돌려줍니다."""
