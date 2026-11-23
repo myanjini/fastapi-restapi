@@ -79,3 +79,13 @@ class Loan(Base):
     returned_at: Mapped[datetime | None]  # 반납하기 전에는 None
 
     book: Mapped["Book"] = relationship()
+
+class LoginFailure(Base):
+    """로그인 실패 기록. 일정 시간 안의 실패 횟수를 세는 데 씁니다."""
+
+    __tablename__ = "login_failures"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), index=True)
+    ip: Mapped[str] = mapped_column(String(45), index=True)  # IPv6 주소까지 담을 수 있는 길이
+    created_at: Mapped[datetime] = mapped_column(index=True)

@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -14,6 +14,7 @@ from app.models import RefreshToken, User
 from app.schemas import RefreshRequest, Token, UserCreate, UserRead
 from app.security import (DUMMY_HASH, create_access_token, create_refresh_token, hash_password,
                           hash_token, verify_password)
+from app.services import login_guard
 
 router = APIRouter(prefix="/auth", tags=["인증"])
 logger = logging.getLogger(__name__)
@@ -56,13 +57,19 @@ def issue_tokens(db: Session, user: User) -> dict:
     }
 
 @router.post("/token", response_model=Token, summary="로그인(토큰 발급)",
-             responses={401: {"description": "이메일 또는 비밀번호가 틀림"}})
-def login(db: SessionDep, form: Annotated[OAuth2PasswordRequestForm, Depends()]):
+             responses={401: {"description": "이메일 또는 비밀번호가 틀림"},
+                        429: {"description": "로그인 시도가 너무 많음"}})
+def login(request: Request, db: SessionDep, form: Annotated[OAuth2PasswordRequestForm, Depends()]):
     # OAuth2 규칙상 입력 칸 이름은 username입니다. 이 앱에서는 이메일을 넣습니다.
-    user = authenticate(db, form.username, form.password)
+    email = form.username.lower()
+    ip = request.client.host if request.client else "unknown"
+    login_guard.check_allowed(db, email, ip)
+    user = authenticate(db, email, form.password)
     if user is None:
+        login_guard.record_failure(db, email, ip)
         logger.warning("로그인 실패")  # 입력한 이메일과 비밀번호는 로그에 남기지 않습니다.
         raise AppError(401, "INVALID_CREDENTIALS", "이메일 또는 비밀번호가 올바르지 않습니다.", headers=BEARER)
+    login_guard.reset(db, email)
     return issue_tokens(db, user)
 
 @router.get("/me", response_model=UserRead, summary="내 정보 조회",

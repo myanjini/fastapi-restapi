@@ -1,10 +1,14 @@
 """보안약점을 고친 뒤 다시 생기지 않는지 확인하는 테스트"""
+from datetime import datetime, timedelta, timezone
+
+import jwt
 import pytest
 from pydantic import ValidationError
 
 from app.config import Settings
 from app.routers import files
 from app.services import covers
+from tests.conftest import TEST_KEY
 from tests.helpers import create_book
 
 SQLI = "zz%' UNION SELECT email, hashed_password, 0 FROM users --"
@@ -90,3 +94,42 @@ def test_admin_user_list_masks_email(client, make_user):
     assert users[0]["email"] == "ad***@example.com"
     detail = client.get(f"/admin/users/{users[0]['id']}", headers=admin).json()
     assert detail["email"] == "admin@example.com"  # 상세 조회에서만 전체를 보여 줍니다.
+
+def login(client, email, password):
+    return client.post("/auth/token", data={"username": email, "password": password})
+
+def test_login_is_locked_after_five_failures(client, make_user):
+    make_user("user1@example.com")
+    for _ in range(5):
+        assert login(client, "user1@example.com", "wrong-pass-0").status_code == 401
+    response = login(client, "user1@example.com", "test-pass-123")  # 맞는 비밀번호여도 잠깁니다.
+    assert response.status_code == 429
+    assert response.headers["Retry-After"] == "900"
+
+def test_successful_login_resets_failures(client, make_user):
+    make_user("user1@example.com")
+    for _ in range(4):
+        login(client, "user1@example.com", "wrong-pass-0")
+    assert login(client, "user1@example.com", "test-pass-123").status_code == 200
+    for _ in range(4):
+        login(client, "user1@example.com", "wrong-pass-0")
+    assert login(client, "user1@example.com", "test-pass-123").status_code == 200
+
+@pytest.mark.parametrize("password", ["short-pw1", "password1234", "aaaaaaaaaaaa", "mybook-mybook-1"])
+def test_weak_password_is_rejected(client, password):
+    response = client.post("/auth/signup", json={"email": "mybook@example.com", "password": password})
+    assert response.status_code == 422
+
+def make_token(payload: dict, key: str = TEST_KEY, algorithm: str = "HS256") -> str:
+    return jwt.encode(payload, key, algorithm=algorithm)
+
+@pytest.mark.parametrize("token", [
+    make_token({"sub": "1", "exp": datetime.now(timezone.utc) - timedelta(minutes=1)}),    # 만료
+    make_token({"sub": "1"}),                                                               # exp 없음
+    make_token({"sub": "1", "exp": datetime.now(timezone.utc) + timedelta(minutes=5)}, "other-key-" * 4),  # 다른 키
+    make_token({"sub": "1", "exp": datetime.now(timezone.utc) + timedelta(minutes=5)}, None, "none"),     # 서명 없음
+])
+def test_invalid_tokens_are_rejected(client, make_user, token):
+    make_user("user1@example.com")
+    response = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 401

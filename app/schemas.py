@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_serializer
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_serializer, model_validator
 
 from app.privacy import mask_email
 
@@ -9,10 +9,28 @@ class InputModel(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+# 실제 서비스에서는 유출된 비밀번호 목록 수십만 개를 씁니다. 여기서는 예시로 몇 개만 둡니다.
+COMMON_PASSWORDS = {
+    "password1234", "1234567890", "qwerty1234", "qwertyuiop", "iloveyou12",
+    "admin12345", "abcd123456", "1q2w3e4r5t", "password12", "welcome123",
+}
+
 class UserCreate(InputModel):
     """회원가입에 쓰는 입력 모델"""
     email: EmailStr = Field(examples=["user1@example.com"])
-    password: str = Field(min_length=8, max_length=64, examples=["practice-pass-1"])
+    password: str = Field(min_length=10, max_length=64, examples=["practice-pass-1"])
+
+    @model_validator(mode="after")
+    def check_password_rules(self):
+        password = self.password.lower()
+        email_id = self.email.split("@")[0].lower()
+        if password in COMMON_PASSWORDS:
+            raise ValueError("너무 흔한 비밀번호입니다.")
+        if len(email_id) >= 3 and email_id in password:
+            raise ValueError("비밀번호에 이메일 아이디를 넣을 수 없습니다.")
+        if len(set(password)) < 4:
+            raise ValueError("같은 글자를 반복한 비밀번호는 쓸 수 없습니다.")
+        return self
 
 class UserRead(BaseModel):
     """사용자 응답 모델. 비밀번호 해시는 넣지 않습니다."""

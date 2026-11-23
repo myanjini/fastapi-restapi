@@ -2,7 +2,8 @@ import os
 
 # app을 불러오기 전에 테스트용 비밀 키를 넣습니다. 환경 변수는 .env보다 먼저 쓰입니다.
 # .env가 없는 CI 서버에서도 테스트가 돌아가게 하려는 것입니다.
-os.environ["SECRET_KEY"] = "test-secret-key-only-for-pytest-0123456789"
+TEST_KEY = "test-secret-key-only-for-pytest-0123456789"
+os.environ["SECRET_KEY"] = TEST_KEY
 
 import pytest
 from fastapi.testclient import TestClient
