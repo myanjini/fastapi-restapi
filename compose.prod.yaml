@@ -2,6 +2,7 @@
 # - 이미지는 ECR에서 받습니다. 어떤 이미지를 쓸지는 같은 폴더의 .env에 IMAGE=... 로 적습니다.
 # - 비밀 값(SECRET_KEY, DATABASE_URL)은 이 파일에도 .env에도 적지 않고, 앱이 Parameter Store에서 읽습니다.
 # - 데이터베이스는 RDS를 쓰므로 db 서비스가 없습니다.
+# - 표지는 S3에, 로그는 CloudWatch Logs에 저장하므로 서버에 볼륨이 필요 없습니다.
 services:
   api:
     image: ${IMAGE:?IMAGE를 .env에 적어 주세요}
@@ -14,6 +15,7 @@ services:
       AWS_DEFAULT_REGION: ap-northeast-2
       LOG_LEVEL: INFO
       COVER_BUCKET: ${COVER_BUCKET:?COVER_BUCKET을 .env에 적어 주세요}  # 표지를 저장할 S3 버킷
+      FORWARDED_ALLOW_IPS: 10.0.0.0/16  # 이 범위(VPC 안의 ALB)가 보낸 X-Forwarded-For만 믿습니다.
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
@@ -21,7 +23,8 @@ services:
       retries: 3
       start_period: 20s
     logging:
-      driver: json-file
+      driver: awslogs            # 로그를 CloudWatch Logs로 보냅니다.
       options:
-        max-size: "10m"   # 로그 파일 하나가 10MB를 넘으면 새 파일로 바꿉니다.
-        max-file: "3"     # 최대 3개까지만 남겨 디스크가 차지 않게 합니다.
+        awslogs-region: ap-northeast-2
+        awslogs-group: /book-api/app
+        awslogs-create-group: "false"   # 로그 그룹은 미리 만들어 둡니다(보존 기간을 정하려고).
