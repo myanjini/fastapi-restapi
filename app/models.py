@@ -35,3 +35,6 @@ class Book(Base):
     author_id: Mapped[int] = mapped_column(ForeignKey("authors.id"))
     # 파이썬에서 쓰는 속성: 저자 객체
     author: Mapped["Author"] = relationship(back_populates="books")
+
+    # 도서를 등록한 사용자. 인증을 붙이기 전에 등록한 도서는 값이 없습니다.
+    owner_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))

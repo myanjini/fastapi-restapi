@@ -1,8 +1,8 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.dependencies import PageDep, SessionDep
+from app.dependencies import PageDep, SessionDep, require_admin
 from app.errors import AppError
 from app.models import Author
 from app.schemas import AuthorCreate, AuthorRead, BookRead
@@ -16,6 +16,7 @@ def find_author(db: Session, author_id: int) -> Author:
     return author
 
 @router.post("", response_model=AuthorRead, status_code=status.HTTP_201_CREATED, summary="저자 등록",
+             dependencies=[Depends(require_admin)],  # 관리자만 호출할 수 있습니다.
              responses={409: {"description": "이미 등록된 저자 이름"}})
 def create_author(db: SessionDep, author_in: AuthorCreate):
     if db.scalar(select(Author).where(Author.name == author_in.name)) is not None:
@@ -42,6 +43,7 @@ def list_author_books(db: SessionDep, author_id: int):
     return author.books
 
 @router.delete("/{author_id}", status_code=status.HTTP_204_NO_CONTENT, summary="저자 삭제",
+               dependencies=[Depends(require_admin)],
                responses={404: {"description": "저자를 찾을 수 없음"}, 409: {"description": "도서가 남아 있는 저자"}})
 def delete_author(db: SessionDep, author_id: int):
     author = find_author(db, author_id)

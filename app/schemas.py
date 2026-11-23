@@ -55,6 +55,7 @@ class BookRead(BaseModel):
     isbn: str | None = None
     published_year: int | None = None
     author: AuthorRead
+    owner_id: int | None = None
 
 class BookPage(BaseModel):
     """목록 응답. 현재 페이지의 도서와 전체 개수를 함께 돌려줍니다."""

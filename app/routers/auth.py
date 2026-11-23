@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.dependencies import SessionDep
+from app.dependencies import BEARER, CurrentUserDep, SessionDep
 from app.errors import AppError
 from app.models import User
 from app.schemas import Token, UserCreate, UserRead
@@ -25,9 +25,6 @@ def signup(db: SessionDep, user_in: UserCreate):
     db.refresh(user)
     return user
 
-# 401 응답에는 어떤 방식으로 인증해야 하는지 알려 주는 헤더를 붙입니다.
-BEARER = {"WWW-Authenticate": "Bearer"}
-
 def authenticate(db: Session, email: str, password: str) -> User | None:
     """이메일과 비밀번호가 맞으면 사용자를, 틀리면 None을 돌려줍니다."""
     user = db.scalar(select(User).where(User.email == email.lower()))
@@ -46,3 +43,8 @@ def login(db: SessionDep, form: Annotated[OAuth2PasswordRequestForm, Depends()])
     if user is None:
         raise AppError(401, "INVALID_CREDENTIALS", "이메일 또는 비밀번호가 올바르지 않습니다.", headers=BEARER)
     return {"access_token": create_access_token(user.id), "token_type": "bearer"}
+
+@router.get("/me", response_model=UserRead, summary="내 정보 조회",
+            responses={401: {"description": "로그인 필요"}})
+def read_me(user: CurrentUserDep):
+    return user

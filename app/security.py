@@ -26,3 +26,16 @@ def create_access_token(user_id: int) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
     payload = {"sub": str(user_id), "exp": expire}
     return jwt.encode(payload, settings.secret_key, algorithm=ALGORITHM)
+
+def decode_access_token(token: str) -> int | None:
+    """토큰이 올바르면 사용자 번호를, 아니면 None을 돌려줍니다."""
+    try:
+        payload = jwt.decode(
+            token,
+            settings.secret_key,
+            algorithms=[ALGORITHM],              # 이 방식으로 서명한 토큰만 받습니다.
+            options={"require": ["exp", "sub"]},  # 만료 시각과 사용자 번호가 꼭 있어야 합니다.
+        )
+    except jwt.InvalidTokenError:  # 서명이 틀렸거나, 만료되었거나, 형식이 깨진 경우
+        return None
+    return int(payload["sub"])
