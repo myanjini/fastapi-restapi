@@ -1,5 +1,5 @@
 """도서 저장소: 데이터베이스에서 도서를 읽고 쓰는 코드만 둡니다. commit은 하지 않습니다."""
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import Book, StockLog
@@ -47,3 +47,13 @@ def delete(db: Session, book: Book) -> None:
 
 def add_stock_log(db: Session, book: Book, change: int, reason: str) -> None:
     db.add(StockLog(book_id=book.id, change=change, reason=reason))
+
+def add_to_stock(db: Session, book_id: int, change: int) -> bool:
+    """재고를 데이터베이스 안에서 계산해 바꿉니다. 결과가 0보다 작아지면 바꾸지 않고 False를 돌려줍니다."""
+    stmt = (
+        update(Book)
+        .where(Book.id == book_id, Book.stock + change >= 0)  # 조건을 만족할 때만 바꿉니다.
+        .values(stock=Book.stock + change)                    # 지금 값에 더하는 계산을 데이터베이스가 합니다.
+        .execution_options(synchronize_session=False)
+    )
+    return db.execute(stmt).rowcount == 1  # 바뀐 행이 1개면 성공, 0개면 조건을 만족하지 못한 것

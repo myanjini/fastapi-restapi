@@ -37,9 +37,9 @@ def check_can_modify(book: Book, user: User) -> None:
 
 def change_stock(db: Session, book: Book, change: int, reason: str) -> None:
     """재고를 바꾸고 기록을 남깁니다. 확정(commit)은 이 함수를 부른 쪽에서 합니다."""
-    if book.stock + change < 0:
+    if not book_repo.add_to_stock(db, book.id, change):
+        db.refresh(book)  # 지금 데이터베이스의 재고를 다시 읽어 메시지에 씁니다.
         raise AppError(409, "INSUFFICIENT_STOCK", f"재고가 부족합니다. 현재 재고는 {book.stock}권입니다.")
-    book.stock += change
     book_repo.add_stock_log(db, book, change, reason)
 
 def create_book(db: Session, user: User, book_in: BookCreate) -> Book:

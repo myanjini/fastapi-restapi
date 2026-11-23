@@ -2,6 +2,7 @@
 import logging
 from datetime import datetime, timezone
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.errors import AppError
@@ -22,8 +23,12 @@ def borrow(db: Session, user: User, book_id: int) -> Loan:
         raise AppError(409, "OUT_OF_STOCK", "남은 재고가 없습니다.")
 
     # 재고 감소, 재고 기록, 대여 기록을 하나의 트랜잭션으로 묶습니다.
-    change_stock(db, book, -1, "대여")
-    loan = loan_repo.add(db, Loan(user_id=user.id, book_id=book.id))
+    change_stock(db, book, -1, "대여")  # 다른 요청이 먼저 마지막 재고를 가져갔다면 여기서 409가 납니다.
+    try:
+        loan = loan_repo.add(db, Loan(user_id=user.id, book_id=book.id))
+    except IntegrityError:  # 같은 사용자의 동시 요청이 먼저 대여를 기록한 경우
+        db.rollback()
+        raise AppError(409, "ALREADY_LOANED", "이미 빌린 도서입니다. 반납한 뒤 다시 빌릴 수 있습니다.")
     db.commit()
     db.refresh(loan)
     logger.info("도서 대여", extra={"user_id": user.id, "book_id": book.id, "loan_id": loan.id})

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, String, func
+from sqlalchemy import ForeignKey, Index, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -71,6 +71,13 @@ class Loan(Base):
     """누가 어떤 도서를 언제 빌리고 반납했는지 기록합니다."""
 
     __tablename__ = "loans"
+
+    # 같은 사용자가 같은 도서를 반납하지 않은 채 두 번 빌릴 수 없게 데이터베이스가 막습니다.
+    # 반납하지 않은(returned_at이 비어 있는) 행에만 적용하는 부분 유일 인덱스입니다.
+    __table_args__ = (
+        Index("uq_loans_active_user_book", "user_id", "book_id", unique=True,
+              sqlite_where=text("returned_at IS NULL"), postgresql_where=text("returned_at IS NULL")),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
