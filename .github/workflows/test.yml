@@ -25,3 +25,12 @@ jobs:
 
       - name: 테스트 실행
         run: pytest --cov=app --cov-report=term-missing
+
+      - name: 보안 점검 도구 설치
+        run: pip install bandit pip-audit
+
+      - name: 보안 점검(코드, bandit)
+        run: bandit -r app -ll
+
+      - name: 보안 점검(패키지, pip-audit)
+        run: pip-audit -r requirements.txt

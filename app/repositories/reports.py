@@ -11,7 +11,8 @@ def stock_report(db: Session, keyword: str, order_by: str) -> list[dict]:
         FROM books b JOIN authors a ON a.id = b.author_id
         WHERE b.title LIKE :pattern
         ORDER BY {ORDER_COLUMNS[order_by]}, b.id
-    """)
+    """)  # nosec B608
+    # 위 판정: 정렬 열 자리에는 ORDER_COLUMNS에 있는 값만 들어가므로 bandit B608은 오탐입니다.
     # :pattern 자리에는 값이 따로 전달되므로 SQL 문장의 구조를 바꿀 수 없습니다.
     rows = db.execute(sql, {"pattern": f"%{keyword}%"}).mappings()
     return [dict(row) for row in rows]
