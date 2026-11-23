@@ -11,3 +11,8 @@ __pycache__/
 # 올린 파일과 기록
 uploads/
 logs/
+
+# 테스트 실행 결과
+.pytest_cache/
+.coverage
+htmlcov/

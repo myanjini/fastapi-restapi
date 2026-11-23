@@ -6,13 +6,13 @@ os.environ["SECRET_KEY"] = "test-secret-key-only-for-pytest-0123456789"
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.main import app
-from app.models import Author
+from app.models import Author, User
 
 # 메모리 안에만 만드는 SQLite. 파일이 생기지 않고, 연결을 하나만 써서 테이블을 함께 봅니다.
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
@@ -54,8 +54,22 @@ def author_id(db_session):
     return author.id
 
 @pytest.fixture
-def auth_headers(client):
-    """가입하고 로그인한 사용자의 Authorization 헤더"""
-    client.post("/auth/signup", json={"email": "tester@example.com", "password": "test-pass-123"})
-    response = client.post("/auth/token", data={"username": "tester@example.com", "password": "test-pass-123"})
-    return {"Authorization": f"Bearer {response.json()['access_token']}"}
+def make_user(client, db_session):
+    """사용자를 만들고 로그인해 Authorization 헤더를 돌려주는 함수를 줍니다."""
+
+    def _make_user(email: str, role: str = "user") -> dict:
+        password = "test-pass-123"
+        client.post("/auth/signup", json={"email": email, "password": password})
+        if role != "user":
+            user = db_session.scalar(select(User).where(User.email == email))
+            user.role = role
+            db_session.commit()
+        response = client.post("/auth/token", data={"username": email, "password": password})
+        return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+    return _make_user
+
+@pytest.fixture
+def auth_headers(make_user):
+    """일반 사용자 한 명의 Authorization 헤더"""
+    return make_user("tester@example.com")
