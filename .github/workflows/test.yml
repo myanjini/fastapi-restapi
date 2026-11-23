@@ -2,10 +2,9 @@ name: test
 
 # 언제 실행할까요: main 브랜치에 푸시할 때와, main으로 가는 풀 리퀘스트를 만들 때
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+  workflow_call:  # 배포 워크플로(deploy.yml)가 이 워크플로를 불러 씁니다. main 푸시 때는 거기서 실행됩니다.
 
 jobs:
   test:
