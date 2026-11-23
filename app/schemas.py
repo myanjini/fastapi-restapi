@@ -14,6 +14,11 @@ class UserRead(BaseModel):
     email: str
     role: str
 
+class Token(BaseModel):
+    """로그인 응답. OAuth2 규칙에 맞춰 이름을 정합니다."""
+    access_token: str
+    token_type: str = "bearer"
+
 class AuthorCreate(BaseModel):
     name: str = Field(min_length=1, max_length=50, examples=["김하늘"])
 
