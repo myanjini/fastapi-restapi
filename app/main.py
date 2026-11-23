@@ -3,10 +3,12 @@ import time
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.errors import AppError
 from app.routers import auth, authors, books
+from app.services.covers import COVER_DIR
 
 app = FastAPI(
     title=settings.app_name,
@@ -51,3 +53,7 @@ def health_check():
 app.include_router(auth.router)
 app.include_router(authors.router)
 app.include_router(books.router)
+
+# 올린 표지 파일을 /covers/파일이름 주소로 내보냅니다.
+COVER_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/covers", StaticFiles(directory=COVER_DIR), name="covers")

@@ -11,5 +11,6 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 15  # 액세스 토큰 유효 시간(분). 재발급이 생겨 짧게 줄입니다.
     refresh_token_expire_days: int = 14  # 리프레시 토큰 유효 기간(일)
     cors_origins: list[str] = ["http://localhost:5173"]
+    upload_dir: str = "uploads"  # 올린 파일을 저장할 폴더
 
 settings = Settings()

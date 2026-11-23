@@ -1,6 +1,6 @@
 from typing import Literal
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Query, UploadFile, status
 
 from app.dependencies import CurrentUserDep, PageDep, SessionDep
 from app.schemas import BookCreate, BookPage, BookRead, BookUpdate, StockChange
@@ -45,3 +45,9 @@ def delete_book(db: SessionDep, user: CurrentUserDep, book_id: int):
              responses={**FORBIDDEN_OR_NOT_FOUND, 409: {"description": "재고 부족"}})
 def adjust_stock(db: SessionDep, user: CurrentUserDep, book_id: int, data: StockChange):
     return book_service.adjust_stock(db, user, book_id, data)
+
+@router.post("/{book_id}/cover", response_model=BookRead, summary="표지 이미지 업로드",
+             responses={**FORBIDDEN_OR_NOT_FOUND, 413: {"description": "2MB 초과"},
+                        415: {"description": "jpg, jpeg, png가 아님"}})
+def upload_book_cover(db: SessionDep, user: CurrentUserDep, book_id: int, file: UploadFile):
+    return book_service.upload_cover(db, user, book_id, file)

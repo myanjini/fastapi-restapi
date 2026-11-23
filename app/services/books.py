@@ -1,4 +1,5 @@
 """도서 서비스: 규칙 검사와 트랜잭션(commit)을 맡습니다. HTTP 요청과 응답은 모릅니다."""
+from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
 from app.errors import AppError
@@ -6,6 +7,7 @@ from app.models import Book, User
 from app.repositories import authors as author_repo
 from app.repositories import books as book_repo
 from app.schemas import BookCreate, BookUpdate, StockChange
+from app.services import covers
 
 def find_book(db: Session, book_id: int) -> Book:
     book = book_repo.get(db, book_id)
@@ -71,11 +73,23 @@ def delete_book(db: Session, user: User, book_id: int) -> None:
     check_can_modify(book, user)
     book_repo.delete(db, book)  # 재고 기록도 함께 지워집니다(cascade).
     db.commit()
+    covers.remove_cover(book.cover_url)
 
 def adjust_stock(db: Session, user: User, book_id: int, data: StockChange) -> Book:
     book = find_book(db, book_id)
     check_can_modify(book, user)
     change_stock(db, book, data.change, data.reason)
     db.commit()
+    db.refresh(book)
+    return book
+
+def upload_cover(db: Session, user: User, book_id: int, file: UploadFile) -> Book:
+    book = find_book(db, book_id)
+    check_can_modify(book, user)
+    data, ext = covers.read_cover(file)
+    old_url = book.cover_url
+    book.cover_url = covers.save_cover(data, ext)
+    db.commit()
+    covers.remove_cover(old_url)  # 데이터베이스에 반영된 뒤에 이전 파일을 지웁니다.
     db.refresh(book)
     return book

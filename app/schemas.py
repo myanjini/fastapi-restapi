@@ -61,6 +61,7 @@ class BookRead(BaseModel):
     isbn: str | None = None
     published_year: int | None = None
     stock: int
+    cover_url: str | None = None
     author: AuthorRead
     owner_id: int | None = None
 

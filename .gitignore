@@ -7,3 +7,7 @@
 # 실행하면 생기는 파일
 __pycache__/
 *.db
+
+# 올린 파일과 기록
+uploads/
+logs/

@@ -32,6 +32,7 @@ class Book(Base):
     price: Mapped[int]
     isbn: Mapped[str | None] = mapped_column(String(13), unique=True)
     published_year: Mapped[int | None]  # 출간 연도. 기존 도서에는 값이 없으므로 None을 허용합니다.
+    cover_url: Mapped[str | None] = mapped_column(String(200))  # 표지 이미지 주소
 
     # 테이블에 저장되는 열: 저자의 번호
     author_id: Mapped[int] = mapped_column(ForeignKey("authors.id"))
