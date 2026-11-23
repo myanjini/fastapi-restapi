@@ -2,11 +2,11 @@ from typing import Literal
 
 from fastapi import APIRouter, Query, status
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.dependencies import PageDep, SessionDep
 from app.errors import AppError
-from app.models import Book
+from app.models import Author, Book
 from app.schemas import BookCreate, BookPage, BookRead, BookUpdate
 
 router = APIRouter(prefix="/books", tags=["도서"])
@@ -24,6 +24,13 @@ def check_isbn_unique(db: Session, isbn: str | None, exclude_id: int | None = No
     if found is not None and found.id != exclude_id:
         raise AppError(409, "DUPLICATE_ISBN", "이미 등록된 ISBN입니다.")
 
+def check_author_exists(db: Session, author_id: int | None) -> None:
+    """요청에 적힌 저자 번호가 실제로 있는지 확인합니다."""
+    if author_id is None:
+        return
+    if db.get(Author, author_id) is None:
+        raise AppError(422, "INVALID_AUTHOR", f"{author_id}번 저자가 없습니다.")
+
 # 정렬 기준으로 받을 수 있는 값과 실제 정렬 방법을 짝지어 둡니다.
 SORT_OPTIONS = {
     "id": Book.id,
@@ -36,18 +43,19 @@ def list_books(
     db: SessionDep,
     page: PageDep,
     q: str | None = Query(default=None, max_length=50, description="제목에 들어간 글자로 검색"),
-    author: str | None = Query(default=None, description="저자 이름"),
+    author_id: int | None = Query(default=None, description="저자 번호"),
     sort: Literal["id", "price", "-price"] = Query(default="id", description="정렬 기준"),
 ):
     conditions = []
     if q is not None:
         conditions.append(Book.title.contains(q))
-    if author is not None:
-        conditions.append(Book.author == author)
+    if author_id is not None:
+        conditions.append(Book.author_id == author_id)
 
     total = db.scalar(select(func.count()).select_from(Book).where(*conditions))
     stmt = (
         select(Book)
+        .options(selectinload(Book.author))  # 저자를 한 번에 함께 읽어 옵니다.
         .where(*conditions)
         .order_by(SORT_OPTIONS[sort], Book.id)
         .offset(page.skip)
@@ -65,6 +73,7 @@ def get_book(db: SessionDep, book_id: int):
              responses={409: {"description": "이미 등록된 ISBN"}})
 def create_book(db: SessionDep, book_in: BookCreate):
     check_isbn_unique(db, book_in.isbn)
+    check_author_exists(db, book_in.author_id)
     book = Book(**book_in.model_dump())
     db.add(book)      # 저장할 목록에 올립니다.
     db.commit()       # 데이터베이스에 실제로 저장합니다.
@@ -77,6 +86,7 @@ def update_book(db: SessionDep, book_id: int, book_in: BookUpdate):
     book = find_book(db, book_id)
     changes = book_in.model_dump(exclude_unset=True, exclude_none=True)
     check_isbn_unique(db, changes.get("isbn"), exclude_id=book_id)
+    check_author_exists(db, changes.get("author_id"))
     for field, value in changes.items():
         setattr(book, field, value)  # book.price = 19000 과 같은 뜻입니다.
     db.commit()

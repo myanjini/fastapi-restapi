@@ -8,7 +8,7 @@ from app import models  # noqa: F401  모델을 불러와야 테이블 목록에
 from app.config import settings
 from app.database import Base, engine
 from app.errors import AppError
-from app.routers import books
+from app.routers import authors, books
 
 # 아직 없는 테이블을 만듭니다. 4장에서 Alembic으로 바꿉니다.
 Base.metadata.create_all(bind=engine)
@@ -52,4 +52,5 @@ def read_root():
 def health_check():
     return {"status": "ok"}
 
+app.include_router(authors.router)
 app.include_router(books.router)
