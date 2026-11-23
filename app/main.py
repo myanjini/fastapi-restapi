@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.errors import AppError
-from app.routers import auth, authors, books
+from app.routers import auth, authors, books, loans
 from app.services.covers import COVER_DIR
 
 app = FastAPI(
@@ -53,6 +53,7 @@ def health_check():
 app.include_router(auth.router)
 app.include_router(authors.router)
 app.include_router(books.router)
+app.include_router(loans.router)
 
 # 올린 표지 파일을 /covers/파일이름 주소로 내보냅니다.
 COVER_DIR.mkdir(parents=True, exist_ok=True)

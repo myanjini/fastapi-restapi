@@ -6,6 +6,7 @@ from app.errors import AppError
 from app.models import Book, User
 from app.repositories import authors as author_repo
 from app.repositories import books as book_repo
+from app.repositories import loans as loan_repo
 from app.schemas import BookCreate, BookUpdate, StockChange
 from app.services import covers
 
@@ -71,6 +72,8 @@ def update_book(db: Session, user: User, book_id: int, book_in: BookUpdate) -> B
 def delete_book(db: Session, user: User, book_id: int) -> None:
     book = find_book(db, book_id)
     check_can_modify(book, user)
+    if loan_repo.exists_for_book(db, book.id):
+        raise AppError(409, "BOOK_HAS_LOANS", "대여 기록이 있는 도서는 삭제할 수 없습니다.")
     book_repo.delete(db, book)  # 재고 기록도 함께 지워집니다(cascade).
     db.commit()
     covers.remove_cover(book.cover_url)

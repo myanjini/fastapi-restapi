@@ -1,5 +1,7 @@
 """표지 파일 저장소: 파일 검사와 저장, 삭제를 맡습니다. 데이터베이스는 다루지 않습니다."""
+import time
 import uuid
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import UploadFile
@@ -35,3 +37,11 @@ def remove_cover(cover_url: str | None) -> None:
     """저장해 둔 표지 파일을 지웁니다. 없으면 아무것도 하지 않습니다."""
     if cover_url:
         (COVER_DIR / Path(cover_url).name).unlink(missing_ok=True)
+
+def write_upload_log(book_id: int, user_id: int, original_name: str, size: int) -> None:
+    """업로드 기록을 파일에 한 줄씩 남깁니다."""
+    LOG_FILE.parent.mkdir(exist_ok=True)
+    time.sleep(2)  # 실습용: 기록을 다른 서버로 보내는 데 2초 걸린다고 가정합니다.
+    line = f"{datetime.now().isoformat(timespec='seconds')} book={book_id} user={user_id} file={original_name} size={size}\n"
+    with LOG_FILE.open("a", encoding="utf-8") as f:
+        f.write(line)

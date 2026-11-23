@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 class UserCreate(BaseModel):
@@ -76,3 +78,24 @@ class BookPage(BaseModel):
     total: int
     skip: int
     limit: int
+
+class LoanCreate(BaseModel):
+    """대여 요청 본문"""
+    book_id: int = Field(gt=0, examples=[1])
+
+class BookBrief(BaseModel):
+    """대여 응답에 넣는 도서 요약"""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+
+class LoanRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    book: BookBrief
+    loaned_at: datetime
+    returned_at: datetime | None = None

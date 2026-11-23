@@ -1,10 +1,11 @@
 from typing import Literal
 
-from fastapi import APIRouter, Query, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Query, UploadFile, status
 
 from app.dependencies import CurrentUserDep, PageDep, SessionDep
 from app.schemas import BookCreate, BookPage, BookRead, BookUpdate, StockChange
 from app.services import books as book_service
+from app.services import covers
 
 router = APIRouter(prefix="/books", tags=["도서"])
 
@@ -49,5 +50,9 @@ def adjust_stock(db: SessionDep, user: CurrentUserDep, book_id: int, data: Stock
 @router.post("/{book_id}/cover", response_model=BookRead, summary="표지 이미지 업로드",
              responses={**FORBIDDEN_OR_NOT_FOUND, 413: {"description": "2MB 초과"},
                         415: {"description": "jpg, jpeg, png가 아님"}})
-def upload_book_cover(db: SessionDep, user: CurrentUserDep, book_id: int, file: UploadFile):
-    return book_service.upload_cover(db, user, book_id, file)
+def upload_book_cover(db: SessionDep, user: CurrentUserDep, book_id: int, file: UploadFile,
+                      background_tasks: BackgroundTasks):
+    book = book_service.upload_cover(db, user, book_id, file)
+    # 응답을 보낸 뒤에 실행할 일을 등록합니다.
+    background_tasks.add_task(covers.write_upload_log, book.id, user.id, file.filename, file.size)
+    return book

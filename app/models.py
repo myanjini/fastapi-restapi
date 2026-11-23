@@ -66,3 +66,16 @@ class StockLog(Base):
     change: Mapped[int]  # 늘어나면 양수, 줄어들면 음수
     reason: Mapped[str] = mapped_column(String(20))
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())  # 데이터베이스가 현재 시각을 넣습니다.
+
+class Loan(Base):
+    """누가 어떤 도서를 언제 빌리고 반납했는지 기록합니다."""
+
+    __tablename__ = "loans"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    book_id: Mapped[int] = mapped_column(ForeignKey("books.id"))
+    loaned_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    returned_at: Mapped[datetime | None]  # 반납하기 전에는 None
+
+    book: Mapped["Book"] = relationship()
