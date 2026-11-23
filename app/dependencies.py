@@ -1,6 +1,9 @@
 from typing import Annotated
 
 from fastapi import Depends, Query
+from sqlalchemy.orm import Session
+
+from app.database import get_db
 
 class Pagination:
     """목록 API가 함께 쓰는 페이지 나누기 값입니다."""
@@ -15,11 +18,4 @@ class Pagination:
 
 # 타입과 의존성을 한 이름으로 묶어 두면 여러 함수에서 짧게 쓸 수 있습니다.
 PageDep = Annotated[Pagination, Depends()]
-
-def get_resource():
-    """yield 의존성 연습용 함수입니다. 열고, 넘겨주고, 닫습니다."""
-    print("자원을 엽니다.")
-    try:
-        yield "임시 자원"
-    finally:
-        print("자원을 닫습니다.")
+SessionDep = Annotated[Session, Depends(get_db)]

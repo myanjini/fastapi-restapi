@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 class BookCreate(BaseModel):
     """등록과 전체 수정(PUT)에 쓰는 입력 모델"""
@@ -16,6 +16,10 @@ class BookUpdate(BaseModel):
 
 class BookRead(BaseModel):
     """응답에 쓰는 출력 모델. 여기에 없는 필드는 응답에서 빠집니다."""
+
+    # ORM 객체의 속성(book.title)에서도 값을 읽을 수 있게 합니다.
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     title: str
     author: str
