@@ -1,6 +1,8 @@
 """보안약점을 고친 뒤 다시 생기지 않는지 확인하는 테스트"""
 import pytest
+from pydantic import ValidationError
 
+from app.config import Settings
 from app.routers import files
 from app.services import covers
 from tests.helpers import create_book
@@ -76,3 +78,15 @@ def test_update_book_with_unknown_field_returns_422(client, auth_headers, author
     book = create_book(client, auth_headers, author_id)
     response = client.patch(f"/books/{book['id']}", json={"owner_id": 999}, headers=auth_headers)
     assert response.status_code == 422
+
+def test_weak_secret_key_is_rejected():
+    for weak in ["change-me", "short-key"]:
+        with pytest.raises(ValidationError):
+            Settings(secret_key=weak, _env_file=None)
+
+def test_admin_user_list_masks_email(client, make_user):
+    admin = make_user("admin@example.com", role="admin")
+    users = client.get("/admin/users", headers=admin).json()
+    assert users[0]["email"] == "ad***@example.com"
+    detail = client.get(f"/admin/users/{users[0]['id']}", headers=admin).json()
+    assert detail["email"] == "admin@example.com"  # 상세 조회에서만 전체를 보여 줍니다.

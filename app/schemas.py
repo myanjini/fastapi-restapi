@@ -1,6 +1,8 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_serializer
+
+from app.privacy import mask_email
 
 class InputModel(BaseModel):
     """요청 본문 모델의 공통 부모. 정의하지 않은 필드가 오면 422로 거절합니다."""
@@ -20,6 +22,13 @@ class UserRead(BaseModel):
     id: int
     email: str
     role: str
+
+class UserSummary(UserRead):
+    """목록 화면용 사용자 정보. 이메일은 일부만 보여 줍니다."""
+
+    @field_serializer("email")
+    def mask_email_field(self, email: str) -> str:
+        return mask_email(email)
 
 class Token(BaseModel):
     """로그인과 재발급 응답. 두 토큰을 함께 돌려줍니다."""
