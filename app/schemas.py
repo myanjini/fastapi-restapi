@@ -99,3 +99,9 @@ class LoanRead(BaseModel):
     book: BookBrief
     loaned_at: datetime
     returned_at: datetime | None = None
+
+class StockReportRow(BaseModel):
+    """재고 보고서의 한 줄"""
+    title: str
+    author: str
+    stock: int
