@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
@@ -15,6 +16,7 @@ from app.security import (DUMMY_HASH, create_access_token, create_refresh_token,
                           hash_token, verify_password)
 
 router = APIRouter(prefix="/auth", tags=["인증"])
+logger = logging.getLogger(__name__)
 
 @router.post("/signup", response_model=UserRead, status_code=status.HTTP_201_CREATED, summary="회원가입",
              responses={409: {"description": "이미 가입된 이메일"}})
@@ -59,6 +61,7 @@ def login(db: SessionDep, form: Annotated[OAuth2PasswordRequestForm, Depends()])
     # OAuth2 규칙상 입력 칸 이름은 username입니다. 이 앱에서는 이메일을 넣습니다.
     user = authenticate(db, form.username, form.password)
     if user is None:
+        logger.warning("로그인 실패")  # 입력한 이메일과 비밀번호는 로그에 남기지 않습니다.
         raise AppError(401, "INVALID_CREDENTIALS", "이메일 또는 비밀번호가 올바르지 않습니다.", headers=BEARER)
     return issue_tokens(db, user)
 

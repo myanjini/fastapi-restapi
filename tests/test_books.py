@@ -3,7 +3,11 @@ from tests.helpers import create_book
 def test_health(client):
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    assert response.json() == {"status": "ok", "database": "ok"}
+
+def test_response_has_request_id(client):
+    response = client.get("/health")
+    assert len(response.headers["X-Request-ID"]) == 16
 
 def test_list_books_is_empty_at_start(client):
     response = client.get("/books")

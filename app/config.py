@@ -16,5 +16,6 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 14  # 리프레시 토큰 유효 기간(일)
     cors_origins: list[str] = ["http://localhost:5173"]
     upload_dir: str = "uploads"  # 올린 파일을 저장할 폴더
+    log_level: str = "INFO"  # DEBUG, INFO, WARNING, ERROR 중 하나
 
 settings = Settings()

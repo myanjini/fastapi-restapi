@@ -1,14 +1,22 @@
+import logging
 import time
+import uuid
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import settings
+from app.dependencies import SessionDep
 from app.errors import AppError
+from app.logging_config import request_id_var, setup_logging
 from app.routers import auth, authors, books, loans
 from app.services.covers import COVER_DIR
+
+setup_logging(settings.log_level)
 
 app = FastAPI(
     title=settings.app_name,
@@ -24,13 +32,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+logger = logging.getLogger("app.request")
+
 @app.middleware("http")
-async def log_process_time(request: Request, call_next):
+async def log_requests(request: Request, call_next):
+    request_id_var.set(uuid.uuid4().hex[:16])  # 이 요청에서 남기는 모든 로그에 같은 ID가 붙습니다.
     start = time.perf_counter()
-    response = await call_next(request)  # 실제 경로 함수가 여기서 실행됩니다.
-    elapsed_ms = (time.perf_counter() - start) * 1000
-    response.headers["X-Process-Time"] = f"{elapsed_ms:.1f}ms"
-    print(f"{request.method} {request.url.path} {response.status_code} {elapsed_ms:.1f}ms")
+    info = {"method": request.method, "path": request.url.path}
+    try:
+        response = await call_next(request)  # 실제 경로 함수가 여기서 실행됩니다.
+    except Exception:
+        info["duration_ms"] = round((time.perf_counter() - start) * 1000, 1)
+        logger.exception("처리하지 못한 오류", extra={**info, "status": 500})
+        raise  # 응답은 FastAPI의 기본 처리에 맡깁니다. 보안 단원에서 안전한 오류 응답으로 바꿉니다.
+    duration_ms = round((time.perf_counter() - start) * 1000, 1)
+    response.headers["X-Request-ID"] = request_id_var.get()
+    response.headers["X-Process-Time"] = f"{duration_ms}ms"
+    logger.info("요청 처리", extra={**info, "status": response.status_code, "duration_ms": duration_ms})
     return response
 
 @app.exception_handler(AppError)
@@ -47,8 +65,13 @@ def read_root():
     return {"message": f"{settings.app_name}에 오신 것을 환영합니다."}
 
 @app.get("/health", tags=["기본"])
-def health_check():
-    return {"status": "ok"}
+def health_check(db: SessionDep):
+    try:
+        db.execute(text("SELECT 1"))  # 데이터베이스에 가장 가벼운 질의를 보내 봅니다.
+    except SQLAlchemyError:
+        logger.exception("데이터베이스 연결 확인 실패")
+        return JSONResponse(status_code=503, content={"status": "error", "database": "unreachable"})
+    return {"status": "ok", "database": "ok"}
 
 app.include_router(auth.router)
 app.include_router(authors.router)

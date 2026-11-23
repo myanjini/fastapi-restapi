@@ -1,4 +1,5 @@
 """대여 서비스"""
+import logging
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
@@ -7,6 +8,8 @@ from app.errors import AppError
 from app.models import Loan, User
 from app.repositories import loans as loan_repo
 from app.services.books import change_stock, find_book
+
+logger = logging.getLogger(__name__)
 
 MAX_ACTIVE_LOANS = 3  # 한 사람이 동시에 빌릴 수 있는 권수
 
@@ -24,6 +27,7 @@ def borrow(db: Session, user: User, book_id: int) -> Loan:
     loan = loan_repo.add(db, Loan(user_id=user.id, book_id=book.id))
     db.commit()
     db.refresh(loan)
+    logger.info("도서 대여", extra={"user_id": user.id, "book_id": book.id, "loan_id": loan.id})
     return loan
 
 def return_book(db: Session, user: User, loan_id: int) -> Loan:
