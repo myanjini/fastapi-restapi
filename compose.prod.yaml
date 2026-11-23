@@ -1,0 +1,31 @@
+# 운영(EC2)용 Compose 파일
+# - 이미지는 ECR에서 받습니다. 어떤 이미지를 쓸지는 같은 폴더의 .env에 IMAGE=... 로 적습니다.
+# - 비밀 값(SECRET_KEY, DATABASE_URL)은 이 파일에도 .env에도 적지 않고, 앱이 Parameter Store에서 읽습니다.
+# - 데이터베이스는 RDS를 쓰므로 db 서비스가 없습니다.
+services:
+  api:
+    image: ${IMAGE:?IMAGE를 .env에 적어 주세요}
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: production              # /docs, /redoc, /openapi.json을 끕니다.
+      SSM_PREFIX: /book-api/           # 이 경로 아래의 비밀 값을 읽습니다.
+      AWS_DEFAULT_REGION: ap-northeast-2
+      LOG_LEVEL: INFO
+    volumes:
+      - uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"   # 로그 파일 하나가 10MB를 넘으면 새 파일로 바꿉니다.
+        max-file: "3"     # 최대 3개까지만 남겨 디스크가 차지 않게 합니다.
+
+volumes:
+  uploads:
