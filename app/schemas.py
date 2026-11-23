@@ -15,9 +15,14 @@ class UserRead(BaseModel):
     role: str
 
 class Token(BaseModel):
-    """로그인 응답. OAuth2 규칙에 맞춰 이름을 정합니다."""
+    """로그인과 재발급 응답. 두 토큰을 함께 돌려줍니다."""
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
+
+class RefreshRequest(BaseModel):
+    """재발급과 로그아웃 요청 본문"""
+    refresh_token: str = Field(min_length=1)
 
 class AuthorCreate(BaseModel):
     name: str = Field(min_length=1, max_length=50, examples=["김하늘"])

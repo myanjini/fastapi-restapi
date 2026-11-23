@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -38,3 +40,13 @@ class Book(Base):
 
     # 도서를 등록한 사용자. 인증을 붙이기 전에 등록한 도서는 값이 없습니다.
     owner_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    # 토큰 원문이 아니라 SHA-256 해시(64글자)를 저장합니다.
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    expires_at: Mapped[datetime]  # 만료 시각(UTC)
+    revoked: Mapped[bool] = mapped_column(default=False)  # True면 더는 쓸 수 없는 토큰

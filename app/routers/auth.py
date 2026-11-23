@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
@@ -5,11 +6,13 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.dependencies import BEARER, CurrentUserDep, SessionDep
 from app.errors import AppError
-from app.models import User
-from app.schemas import Token, UserCreate, UserRead
-from app.security import DUMMY_HASH, create_access_token, hash_password, verify_password
+from app.models import RefreshToken, User
+from app.schemas import RefreshRequest, Token, UserCreate, UserRead
+from app.security import (DUMMY_HASH, create_access_token, create_refresh_token, hash_password,
+                          hash_token, verify_password)
 
 router = APIRouter(prefix="/auth", tags=["인증"])
 
@@ -35,6 +38,21 @@ def authenticate(db: Session, email: str, password: str) -> User | None:
         return None
     return user
 
+def issue_tokens(db: Session, user: User) -> dict:
+    """액세스 토큰과 리프레시 토큰을 함께 발급합니다. 리프레시 토큰은 해시만 저장합니다."""
+    refresh_token = create_refresh_token()
+    db.add(RefreshToken(
+        user_id=user.id,
+        token_hash=hash_token(refresh_token),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days),
+    ))
+    db.commit()
+    return {
+        "access_token": create_access_token(user.id),
+        "refresh_token": refresh_token,  # 원문은 이 응답에서 한 번만 내보냅니다.
+        "token_type": "bearer",
+    }
+
 @router.post("/token", response_model=Token, summary="로그인(토큰 발급)",
              responses={401: {"description": "이메일 또는 비밀번호가 틀림"}})
 def login(db: SessionDep, form: Annotated[OAuth2PasswordRequestForm, Depends()]):
@@ -42,9 +60,31 @@ def login(db: SessionDep, form: Annotated[OAuth2PasswordRequestForm, Depends()])
     user = authenticate(db, form.username, form.password)
     if user is None:
         raise AppError(401, "INVALID_CREDENTIALS", "이메일 또는 비밀번호가 올바르지 않습니다.", headers=BEARER)
-    return {"access_token": create_access_token(user.id), "token_type": "bearer"}
+    return issue_tokens(db, user)
 
 @router.get("/me", response_model=UserRead, summary="내 정보 조회",
             responses={401: {"description": "로그인 필요"}})
 def read_me(user: CurrentUserDep):
     return user
+
+@router.post("/refresh", response_model=Token, summary="토큰 재발급",
+             responses={401: {"description": "리프레시 토큰이 유효하지 않음"}})
+def refresh(db: SessionDep, body: RefreshRequest):
+    stored = db.scalar(select(RefreshToken).where(
+        RefreshToken.token_hash == hash_token(body.refresh_token),
+        RefreshToken.revoked.is_(False),
+        RefreshToken.expires_at > datetime.now(timezone.utc),
+    ))
+    if stored is None:
+        raise AppError(401, "INVALID_REFRESH_TOKEN", "리프레시 토큰이 유효하지 않거나 만료되었습니다.")
+    stored.revoked = True  # 한 번 쓴 리프레시 토큰은 다시 쓰지 못하게 합니다.
+    user = db.get(User, stored.user_id)
+    return issue_tokens(db, user)  # 새 토큰 저장과 함께 위의 변경도 commit됩니다.
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT, summary="로그아웃")
+def logout(db: SessionDep, body: RefreshRequest):
+    stored = db.scalar(select(RefreshToken).where(RefreshToken.token_hash == hash_token(body.refresh_token)))
+    if stored is not None:
+        stored.revoked = True
+        db.commit()
+    # 없는 토큰이어도 204를 돌려줍니다. 로그아웃은 몇 번을 해도 결과가 같아야 합니다.

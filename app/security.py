@@ -1,3 +1,5 @@
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 
 import jwt
@@ -39,3 +41,11 @@ def decode_access_token(token: str) -> int | None:
     except jwt.InvalidTokenError:  # 서명이 틀렸거나, 만료되었거나, 형식이 깨진 경우
         return None
     return int(payload["sub"])
+
+def create_refresh_token() -> str:
+    """추측할 수 없는 무작위 문자열을 만듭니다. JWT가 아닌 평범한 문자열입니다."""
+    return secrets.token_urlsafe(32)
+
+def hash_token(token: str) -> str:
+    """리프레시 토큰을 데이터베이스에 저장하고 찾을 때 쓰는 SHA-256 해시를 만듭니다."""
+    return hashlib.sha256(token.encode()).hexdigest()
