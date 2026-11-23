@@ -25,3 +25,10 @@ class BookRead(BaseModel):
     author: str
     price: int
     isbn: str | None = None
+
+class BookPage(BaseModel):
+    """목록 응답. 현재 페이지의 도서와 전체 개수를 함께 돌려줍니다."""
+    items: list[BookRead]
+    total: int
+    skip: int
+    limit: int
