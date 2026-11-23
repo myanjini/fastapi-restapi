@@ -1,0 +1,19 @@
+# 이미지에 넣지 않을 파일
+.venv/
+.git/
+.github/
+__pycache__/
+*.pyc
+
+# 비밀 값과 내 컴퓨터의 데이터
+.env
+*.db
+uploads/
+logs/
+data/
+
+# 테스트와 그 결과물
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
