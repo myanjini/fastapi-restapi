@@ -1,3 +1,4 @@
+import os
 from typing import Literal
 
 from pydantic import field_validator
@@ -34,4 +35,25 @@ class Settings(BaseSettings):
             raise ValueError("SECRET_KEY는 secrets 모듈로 만든 32자 이상의 값이어야 합니다.")
         return value
 
+# Parameter Store에서 읽을 비밀 값의 이름(앞에 SSM_PREFIX가 붙습니다. 예: /book-api/SECRET_KEY)
+SSM_NAMES = ("SECRET_KEY", "DATABASE_URL")
+
+def load_ssm_parameters() -> None:
+    """SSM_PREFIX 환경 변수가 있으면 Parameter Store에서 비밀 값을 읽어 환경 변수에 넣습니다.
+
+    내 컴퓨터와 테스트에서는 SSM_PREFIX가 없으므로 아무것도 하지 않고 .env를 그대로 씁니다.
+    """
+    prefix = os.environ.get("SSM_PREFIX")
+    if not prefix:
+        return
+    import boto3  # AWS에서 실행할 때만 필요하므로 여기서 가져옵니다.
+
+    names = [prefix + name for name in SSM_NAMES]
+    response = boto3.client("ssm").get_parameters(Names=names, WithDecryption=True)
+    if response.get("InvalidParameters"):  # 없는 이름이 있으면 시작하지 않습니다(값은 출력하지 않음).
+        raise RuntimeError(f"Parameter Store에 없는 파라미터: {response['InvalidParameters']}")
+    for parameter in response["Parameters"]:
+        os.environ[parameter["Name"].removeprefix(prefix)] = parameter["Value"]
+
+load_ssm_parameters()
 settings = Settings()
