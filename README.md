@@ -56,23 +56,23 @@
 
 ## 사용 방법
 
-저장소를 내려받고 원하는 브랜치로 바꿉니다. 내가 실습하는 C:\book-api 폴더와 섞이지 않도록 다른 폴더(C:\fastapi-restapi)에 내려받습니다.
+저장소를 내려받고 원하는 브랜치로 바꿉니다. 내가 실습하는 C:\book-api 폴더와 섞이지 않도록 C:\example\book-api 폴더에 내려받습니다. git clone 끝에 경로를 적으면 그 경로에 폴더가 만들어집니다.
 
 ```
-C:\> git clone https://github.com/myanjini/fastapi-restapi.git
-C:\> cd fastapi-restapi
-C:\fastapi-restapi> git branch -r
-C:\fastapi-restapi> git switch p14-done
+C:\> git clone https://github.com/myanjini/fastapi-restapi.git C:\example\book-api
+C:\> cd /d C:\example\book-api
+C:\example\book-api> git branch -r
+C:\example\book-api> git switch p14-done
 ```
 
 브랜치를 바꾼 뒤에는 그 브랜치의 패키지를 설치합니다. 3.10절(p11-done)부터 requirements.txt가 있습니다. `.env`는 저장소에 없으므로 3.6절(p9-done)부터는 `.env.example`을 복사해 만들고 SECRET_KEY를 채웁니다.
 
 ```
-C:\fastapi-restapi> python -m venv .venv
-C:\fastapi-restapi> .venv\Scripts\activate
-(.venv) C:\fastapi-restapi> pip install -r requirements.txt
-(.venv) C:\fastapi-restapi> copy .env.example .env
-(.venv) C:\fastapi-restapi> python -c "import secrets; print(secrets.token_urlsafe(32))"
+C:\example\book-api> python -m venv .venv
+C:\example\book-api> .venv\Scripts\activate
+(.venv) C:\example\book-api> pip install -r requirements.txt
+(.venv) C:\example\book-api> copy .env.example .env
+(.venv) C:\example\book-api> python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
 4장(p14-done)부터는 서버를 실행하기 전에 `alembic upgrade head`로 테이블을 만듭니다. 7장(p23-done)부터는 `pytest`로 테스트를 실행할 수 있습니다.
@@ -80,9 +80,9 @@ C:\fastapi-restapi> .venv\Scripts\activate
 내 코드와 완성 코드를 비교하거나, 한 절에서 무엇이 바뀌었는지 보려면 `git diff`를 씁니다.
 
 ```
-(.venv) C:\fastapi-restapi> git diff p13-done p14-done --stat
-(.venv) C:\fastapi-restapi> git diff p13-done p14-done -- app/models.py
-C:\> code --diff C:\book-api\app\models.py C:\fastapi-restapi\app\models.py
+(.venv) C:\example\book-api> git diff p13-done p14-done --stat
+(.venv) C:\example\book-api> git diff p13-done p14-done -- app/models.py
+C:\> code --diff C:\book-api\app\models.py C:\example\book-api\app\models.py
 ```
 
 ## 이 main 브랜치에 들어 있는 것
