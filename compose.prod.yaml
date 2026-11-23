@@ -16,6 +16,7 @@ services:
       LOG_LEVEL: INFO
       COVER_BUCKET: ${COVER_BUCKET:?COVER_BUCKET을 .env에 적어 주세요}  # 표지를 저장할 S3 버킷
       FORWARDED_ALLOW_IPS: 10.0.0.0/16  # 이 범위(VPC 안의 ALB)가 보낸 X-Forwarded-For만 믿습니다.
+      CORS_ORIGINS: "[]"  # 브라우저 화면이 없으므로 어떤 Origin도 허용하지 않습니다. 화면이 생기면 그 주소만 적습니다.
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
