@@ -28,3 +28,7 @@ def add(db: Session, loan: Loan) -> Loan:
     db.add(loan)
     db.flush()
     return loan
+
+def list_all(db: Session, skip: int, limit: int) -> list[Loan]:
+    stmt = select(Loan).options(selectinload(Loan.book)).order_by(Loan.id.desc()).offset(skip).limit(limit)
+    return list(db.scalars(stmt).all())

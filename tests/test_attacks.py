@@ -47,3 +47,32 @@ def test_clean_filename():
     assert covers.clean_filename("../../etc/passwd") == "passwd"
     assert covers.clean_filename("a\nb.png") == "ab.png"
     assert covers.clean_filename("") == "unnamed"
+
+def test_cannot_read_others_loan(client, make_user, author_id):
+    user1 = make_user("user1@example.com")
+    user3 = make_user("user3@example.com")
+    book = create_book(client, user1, author_id, stock=1)
+    loan = client.post("/loans", json={"book_id": book["id"]}, headers=user1).json()
+
+    assert client.get(f"/loans/{loan['id']}", headers=user1).status_code == 200
+    response = client.get(f"/loans/{loan['id']}", headers=user3)
+    assert response.status_code == 404  # 남의 기록은 있다는 사실도 알려 주지 않습니다.
+
+@pytest.mark.parametrize("path", ["/admin/users", "/admin/loans"])
+def test_admin_api_forbidden_for_user(client, auth_headers, path):
+    assert client.get(path, headers=auth_headers).status_code == 403
+
+def test_admin_api_for_admin(client, make_user):
+    admin = make_user("admin@example.com", role="admin")
+    response = client.get("/admin/users", headers=admin)
+    assert response.status_code == 200
+    assert "hashed_password" not in response.json()[0]
+
+def test_signup_with_role_field_returns_422(client):
+    response = client.post("/auth/signup", json={"email": "x@example.com", "password": "test-pass-123", "role": "admin"})
+    assert response.status_code == 422
+
+def test_update_book_with_unknown_field_returns_422(client, auth_headers, author_id):
+    book = create_book(client, auth_headers, author_id)
+    response = client.patch(f"/books/{book['id']}", json={"owner_id": 999}, headers=auth_headers)
+    assert response.status_code == 422

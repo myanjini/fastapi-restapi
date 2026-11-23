@@ -16,8 +16,13 @@ def borrow_book(db: SessionDep, user: CurrentUserDep, loan_in: LoanCreate):
 def list_my_loans(db: SessionDep, user: CurrentUserDep):
     return loan_service.my_loans(db, user)
 
+@router.get("/{loan_id}", response_model=LoanRead, summary="대여 상세 조회",
+            responses={401: {"description": "로그인 필요"}, 404: {"description": "대여 기록을 찾을 수 없음"}})
+def get_loan(db: SessionDep, user: CurrentUserDep, loan_id: int):
+    return loan_service.get_loan(db, user, loan_id)
+
 @router.post("/{loan_id}/return", response_model=LoanRead, summary="도서 반납",
-             responses={401: {"description": "로그인 필요"}, 403: {"description": "본인 대여가 아님"},
+             responses={401: {"description": "로그인 필요"},
                         404: {"description": "대여 기록을 찾을 수 없음"}, 409: {"description": "이미 반납함"}})
 def return_book(db: SessionDep, user: CurrentUserDep, loan_id: int):
     return loan_service.return_book(db, user, loan_id)

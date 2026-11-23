@@ -9,9 +9,8 @@ from app.models import Loan, User
 from app.repositories import loans as loan_repo
 from app.services.books import change_stock, find_book
 
-logger = logging.getLogger(__name__)
-
 MAX_ACTIVE_LOANS = 3  # 한 사람이 동시에 빌릴 수 있는 권수
+logger = logging.getLogger(__name__)
 
 def borrow(db: Session, user: User, book_id: int) -> Loan:
     book = find_book(db, book_id)
@@ -30,12 +29,18 @@ def borrow(db: Session, user: User, book_id: int) -> Loan:
     logger.info("도서 대여", extra={"user_id": user.id, "book_id": book.id, "loan_id": loan.id})
     return loan
 
-def return_book(db: Session, user: User, loan_id: int) -> Loan:
+def find_accessible_loan(db: Session, user: User, loan_id: int) -> Loan:
+    """본인이나 관리자가 볼 수 있는 대여 기록만 돌려줍니다. 남의 기록은 없는 것처럼 404로 답합니다."""
     loan = loan_repo.get(db, loan_id)
-    if loan is None:
+    if loan is None or (loan.user_id != user.id and user.role != "admin"):
         raise AppError(404, "LOAN_NOT_FOUND", f"{loan_id}번 대여 기록을 찾을 수 없습니다.")
-    if loan.user_id != user.id and user.role != "admin":
-        raise AppError(403, "FORBIDDEN", "본인이 빌린 도서만 반납할 수 있습니다.")
+    return loan
+
+def get_loan(db: Session, user: User, loan_id: int) -> Loan:
+    return find_accessible_loan(db, user, loan_id)
+
+def return_book(db: Session, user: User, loan_id: int) -> Loan:
+    loan = find_accessible_loan(db, user, loan_id)
     if loan.returned_at is not None:
         raise AppError(409, "ALREADY_RETURNED", "이미 반납한 도서입니다.")
 
@@ -43,6 +48,7 @@ def return_book(db: Session, user: User, loan_id: int) -> Loan:
     change_stock(db, loan.book, 1, "반납")
     db.commit()
     db.refresh(loan)
+    logger.info("도서 반납", extra={"user_id": user.id, "book_id": loan.book_id, "loan_id": loan.id})
     return loan
 
 def my_loans(db: Session, user: User) -> list[Loan]:

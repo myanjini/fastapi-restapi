@@ -2,7 +2,12 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-class UserCreate(BaseModel):
+class InputModel(BaseModel):
+    """요청 본문 모델의 공통 부모. 정의하지 않은 필드가 오면 422로 거절합니다."""
+
+    model_config = ConfigDict(extra="forbid")
+
+class UserCreate(InputModel):
     """회원가입에 쓰는 입력 모델"""
     email: EmailStr = Field(examples=["user1@example.com"])
     password: str = Field(min_length=8, max_length=64, examples=["practice-pass-1"])
@@ -22,11 +27,11 @@ class Token(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
 
-class RefreshRequest(BaseModel):
+class RefreshRequest(InputModel):
     """재발급과 로그아웃 요청 본문"""
     refresh_token: str = Field(min_length=1)
 
-class AuthorCreate(BaseModel):
+class AuthorCreate(InputModel):
     name: str = Field(min_length=1, max_length=50, examples=["김하늘"])
 
 class AuthorRead(BaseModel):
@@ -35,7 +40,7 @@ class AuthorRead(BaseModel):
     id: int
     name: str
 
-class BookCreate(BaseModel):
+class BookCreate(InputModel):
     """등록에 쓰는 입력 모델"""
     title: str = Field(min_length=1, max_length=100, examples=["FastAPI 실전"])
     author_id: int = Field(gt=0, examples=[1])
@@ -44,7 +49,7 @@ class BookCreate(BaseModel):
     published_year: int | None = Field(default=None, ge=1900, le=2100)
     stock: int = Field(default=0, ge=0, le=1000, examples=[3])  # 처음 들여오는 수량
 
-class BookUpdate(BaseModel):
+class BookUpdate(InputModel):
     """일부 수정(PATCH)에 쓰는 입력 모델. 모든 항목이 선택입니다."""
     title: str | None = Field(default=None, min_length=1, max_length=100)
     author_id: int | None = Field(default=None, gt=0)
@@ -67,7 +72,7 @@ class BookRead(BaseModel):
     author: AuthorRead
     owner_id: int | None = None
 
-class StockChange(BaseModel):
+class StockChange(InputModel):
     """재고 변경 요청 본문"""
     change: int = Field(ge=-1000, le=1000, examples=[5])  # 늘릴 때 양수, 줄일 때 음수
     reason: str = Field(min_length=1, max_length=20, examples=["입고"])
@@ -79,7 +84,7 @@ class BookPage(BaseModel):
     skip: int
     limit: int
 
-class LoanCreate(BaseModel):
+class LoanCreate(InputModel):
     """대여 요청 본문"""
     book_id: int = Field(gt=0, examples=[1])
 

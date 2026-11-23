@@ -13,7 +13,7 @@ from app.config import settings
 from app.dependencies import SessionDep
 from app.errors import AppError
 from app.logging_config import request_id_var, setup_logging
-from app.routers import auth, authors, books, files, loans, reports
+from app.routers import admin, auth, authors, books, files, loans, reports
 from app.services.covers import COVER_DIR
 
 setup_logging(settings.log_level)
@@ -86,6 +86,7 @@ app.include_router(books.router)
 app.include_router(loans.router)
 app.include_router(reports.router)
 app.include_router(files.router)
+app.include_router(admin.router)
 
 # 올린 표지 파일을 /covers/파일이름 주소로 내보냅니다.
 COVER_DIR.mkdir(parents=True, exist_ok=True)

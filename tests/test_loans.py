@@ -21,13 +21,13 @@ def test_borrow_same_book_twice_returns_409(client, auth_headers, author_id):
     response = borrow(client, auth_headers, book["id"])
     assert response.json()["code"] == "ALREADY_LOANED"
 
-def test_return_others_loan_returns_403(client, make_user, author_id):
+def test_return_others_loan_returns_404(client, make_user, author_id):
     user1 = make_user("user1@example.com")
     user2 = make_user("user2@example.com")
     book = create_book(client, user1, author_id, stock=1)
     loan = borrow(client, user1, book["id"]).json()
     response = client.post(f"/loans/{loan['id']}/return", headers=user2)
-    assert response.status_code == 403
+    assert response.status_code == 404
 
 def test_return_twice_returns_409(client, auth_headers, author_id):
     book = create_book(client, auth_headers, author_id, stock=1)
