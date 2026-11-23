@@ -1,4 +1,18 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+class UserCreate(BaseModel):
+    """회원가입에 쓰는 입력 모델"""
+    email: EmailStr = Field(examples=["user1@example.com"])
+    password: str = Field(min_length=8, max_length=64, examples=["practice-pass-1"])
+
+class UserRead(BaseModel):
+    """사용자 응답 모델. 비밀번호 해시는 넣지 않습니다."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: str
+    role: str
 
 class AuthorCreate(BaseModel):
     name: str = Field(min_length=1, max_length=50, examples=["김하늘"])

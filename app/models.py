@@ -3,6 +3,16 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True)
+    # 비밀번호 원문이 아니라 해시만 저장합니다.
+    hashed_password: Mapped[str] = mapped_column(String(255))
+    # 역할: 일반 사용자는 "user", 관리자는 "admin"
+    role: Mapped[str] = mapped_column(String(20), default="user")
+
 class Author(Base):
     __tablename__ = "authors"
 

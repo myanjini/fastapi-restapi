@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.errors import AppError
-from app.routers import authors, books
+from app.routers import auth, authors, books
 
 app = FastAPI(
     title=settings.app_name,
@@ -47,5 +47,6 @@ def read_root():
 def health_check():
     return {"status": "ok"}
 
+app.include_router(auth.router)
 app.include_router(authors.router)
 app.include_router(books.router)
