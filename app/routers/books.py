@@ -54,5 +54,6 @@ def upload_book_cover(db: SessionDep, user: CurrentUserDep, book_id: int, file: 
                       background_tasks: BackgroundTasks):
     book = book_service.upload_cover(db, user, book_id, file)
     # 응답을 보낸 뒤에 실행할 일을 등록합니다.
-    background_tasks.add_task(covers.write_upload_log, book.id, user.id, file.filename, file.size)
+    background_tasks.add_task(covers.write_upload_log, book.id, user.id,
+                              covers.clean_filename(file.filename), file.size)
     return book

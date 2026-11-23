@@ -2,6 +2,7 @@
 import pytest
 
 from app.routers import files
+from app.services import covers
 from tests.helpers import create_book
 
 SQLI = "zz%' UNION SELECT email, hashed_password, 0 FROM users --"
@@ -28,3 +29,21 @@ def test_download_file(client, tmp_path, monkeypatch):
     assert response.status_code == 200
     assert response.text == "이용 안내"
     assert "attachment" in response.headers["content-disposition"]
+
+def test_responses_have_nosniff_header(client):
+    assert client.get("/health").headers["X-Content-Type-Options"] == "nosniff"
+
+def test_upload_html_disguised_as_png_returns_415(client, auth_headers, author_id, tmp_path, monkeypatch):
+    monkeypatch.setattr(covers, "COVER_DIR", tmp_path)
+    book = create_book(client, auth_headers, author_id)
+    fake = b"<html><script>alert(document.cookie)</script></html>"
+    response = client.post(f"/books/{book['id']}/cover", headers=auth_headers,
+                           files={"file": ("cover.png", fake, "image/png")})
+    assert response.status_code == 415
+    assert response.json()["code"] == "INVALID_IMAGE_CONTENT"
+    assert list(tmp_path.iterdir()) == []  # 아무 파일도 저장되지 않았습니다.
+
+def test_clean_filename():
+    assert covers.clean_filename("../../etc/passwd") == "passwd"
+    assert covers.clean_filename("a\nb.png") == "ab.png"
+    assert covers.clean_filename("") == "unnamed"

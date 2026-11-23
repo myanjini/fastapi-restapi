@@ -51,6 +51,13 @@ async def log_requests(request: Request, call_next):
     logger.info("요청 처리", extra={**info, "status": response.status_code, "duration_ms": duration_ms})
     return response
 
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    # 브라우저가 Content-Type을 무시하고 내용을 보고 형식을 짐작하지 못하게 합니다.
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
+
 @app.exception_handler(AppError)
 def handle_app_error(request: Request, exc: AppError):
     # 어떤 AppError든 같은 모양의 JSON으로 바꿔 응답합니다.
