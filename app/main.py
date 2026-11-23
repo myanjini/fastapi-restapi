@@ -5,8 +5,7 @@ import uuid
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -15,7 +14,7 @@ from app.dependencies import SessionDep
 from app.errors import AppError
 from app.logging_config import request_id_var, setup_logging
 from app.routers import admin, auth, authors, books, files, loans, reports
-from app.services.covers import COVER_DIR
+from app.services import covers
 
 setup_logging(settings.log_level)
 
@@ -108,6 +107,14 @@ app.include_router(reports.router)
 app.include_router(files.router)
 app.include_router(admin.router)
 
-# 올린 표지 파일을 /covers/파일이름 주소로 내보냅니다.
-COVER_DIR.mkdir(parents=True, exist_ok=True)
-app.mount("/covers", StaticFiles(directory=COVER_DIR), name="covers")
+# 표지 이미지 주소(/covers/파일이름). S3를 쓰면 미리 서명된 URL로 보내고, 아니면 uploads 폴더의 파일을 돌려줍니다.
+@app.get("/covers/{filename}", include_in_schema=False)
+def get_cover(filename: str):
+    if not covers.COVER_NAME.fullmatch(filename):  # 서버가 만든 이름 모양이 아니면 찾지 않습니다.
+        raise AppError(404, "COVER_NOT_FOUND", "표지 이미지를 찾을 수 없습니다.")
+    if settings.cover_bucket:
+        return RedirectResponse(covers.cover_download_url(filename), status_code=307)
+    path = covers.COVER_DIR / filename
+    if not path.is_file():
+        raise AppError(404, "COVER_NOT_FOUND", "표지 이미지를 찾을 수 없습니다.")
+    return FileResponse(path)

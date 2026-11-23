@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 15  # 액세스 토큰 유효 시간(분)
     refresh_token_expire_days: int = 14  # 리프레시 토큰 유효 기간(일)
     upload_dir: str = "uploads"  # 올린 파일을 저장할 폴더
+    cover_bucket: str | None = None  # 값이 있으면 표지를 이 S3 버킷에 저장합니다(없으면 uploads 폴더).
     log_level: str = "INFO"  # DEBUG, INFO, WARNING, ERROR 중 하나
     cors_origins: list[str] = ["http://localhost:5173"]
 

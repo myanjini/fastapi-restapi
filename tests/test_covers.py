@@ -21,3 +21,12 @@ def test_upload_text_file_returns_415(client, auth_headers, author_id, tmp_path,
     response = client.post(f"/books/{book['id']}/cover", headers=auth_headers,
                            files={"file": ("note.txt", b"hello", "text/plain")})
     assert response.status_code == 415
+
+def test_uploaded_cover_can_be_downloaded(client, auth_headers, author_id, tmp_path, monkeypatch):
+    monkeypatch.setattr(covers, "COVER_DIR", tmp_path)
+    book = create_book(client, auth_headers, author_id)
+    url = client.post(f"/books/{book['id']}/cover", headers=auth_headers,
+                      files={"file": ("cover.png", PNG, "image/png")}).json()["cover_url"]
+    response = client.get(url)
+    assert response.status_code == 200
+    assert response.content == PNG
