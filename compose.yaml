@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: bookapi
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}  # .env에서 읽어 옵니다.
+      POSTGRES_DB: bookapi
+    volumes:
+      - db-data:/var/lib/postgresql  # 데이터를 컨테이너 밖 볼륨에 저장합니다.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bookapi -d bookapi"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg://bookapi:${POSTGRES_PASSWORD}@db:5432/bookapi
+      SECRET_KEY: ${SECRET_KEY}
+    volumes:
+      - uploads:/app/uploads  # 올린 표지를 컨테이너 밖 볼륨에 저장합니다.
+    depends_on:
+      db:
+        condition: service_healthy  # db가 연결을 받을 준비가 된 뒤에 시작합니다.
+
+volumes:
+  db-data:
+  uploads:

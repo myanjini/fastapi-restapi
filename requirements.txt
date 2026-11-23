@@ -42,6 +42,8 @@ opentelemetry-semantic-conventions==0.66b2
 packaging==26.3
 pluggy==1.7.0
 protobuf==7.36.2
+psycopg==3.3.9
+psycopg-binary==3.3.9
 pwdlib==0.4.2
 pycparser==3.12
 pydantic==2.14.4

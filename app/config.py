@@ -3,7 +3,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """환경 변수와 .env 파일에서 설정값을 읽습니다. 이름은 대소문자를 가리지 않습니다."""
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",  # .env에 Compose가 쓰는 값(POSTGRES_PASSWORD)이 있어도 오류 없이 넘어갑니다.
+    )
 
     app_name: str = "도서 관리 API"
     database_url: str = "sqlite:///./books.db"
