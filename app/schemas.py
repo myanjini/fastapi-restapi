@@ -15,6 +15,7 @@ class BookCreate(BaseModel):
     author_id: int = Field(gt=0, examples=[1])
     price: int = Field(ge=0, le=1_000_000, examples=[27000])
     isbn: str | None = Field(default=None, pattern=r"^\d{13}$", examples=["9791100000035"])
+    published_year: int | None = Field(default=None, ge=1900, le=2100)
 
 class BookUpdate(BaseModel):
     """일부 수정(PATCH)에 쓰는 입력 모델. 모든 항목이 선택입니다."""
@@ -22,6 +23,7 @@ class BookUpdate(BaseModel):
     author_id: int | None = Field(default=None, gt=0)
     price: int | None = Field(default=None, ge=0, le=1_000_000)
     isbn: str | None = Field(default=None, pattern=r"^\d{13}$")
+    published_year: int | None = Field(default=None, ge=1900, le=2100)
 
 class BookRead(BaseModel):
     """응답에 쓰는 출력 모델. 저자는 이름까지 담아 중첩해서 보냅니다."""
@@ -32,6 +34,7 @@ class BookRead(BaseModel):
     title: str
     price: int
     isbn: str | None = None
+    published_year: int | None = None
     author: AuthorRead
 
 class BookPage(BaseModel):
