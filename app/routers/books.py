@@ -1,6 +1,7 @@
 from fastapi import APIRouter, status
 
 from app.data import BOOKS
+from app.dependencies import PageDep
 from app.errors import AppError
 from app.schemas import BookCreate, BookRead, BookUpdate
 
@@ -21,11 +22,12 @@ def check_isbn_unique(isbn: str | None, exclude_id: int | None = None) -> None:
             raise AppError(409, "DUPLICATE_ISBN", "이미 등록된 ISBN입니다.")
 
 @router.get("", response_model=list[BookRead], summary="도서 목록 조회")
-def list_books(author: str | None = None):
-    """저자 이름(author)을 주면 그 저자의 도서만 돌려줍니다."""
-    if author is None:
-        return BOOKS
-    return [book for book in BOOKS if book["author"] == author]
+def list_books(page: PageDep, author: str | None = None):
+    """저자 이름(author)으로 거르고, skip과 limit으로 나눠 돌려줍니다."""
+    result = BOOKS
+    if author is not None:
+        result = [book for book in result if book["author"] == author]
+    return result[page.skip : page.skip + page.limit]
 
 @router.get("/{book_id}", response_model=BookRead, summary="도서 상세 조회",
             responses={404: {"description": "도서를 찾을 수 없음"}})
