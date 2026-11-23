@@ -3,6 +3,7 @@ import time
 import uuid
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -18,10 +19,16 @@ from app.services.covers import COVER_DIR
 
 setup_logging(settings.log_level)
 
+# 운영 환경에서는 API 문서(/docs, /redoc, /openapi.json)를 공개하지 않습니다.
+docs_enabled = settings.app_env != "production"
+
 app = FastAPI(
     title=settings.app_name,
     description="도서를 등록하고 조회, 수정, 삭제하는 API입니다.",
     version="0.1.0",
+    docs_url="/docs" if docs_enabled else None,
+    redoc_url="/redoc" if docs_enabled else None,
+    openapi_url="/openapi.json" if docs_enabled else None,
 )
 
 # 이 주소에서 실행되는 웹 화면만 브라우저에서 이 API를 호출할 수 있습니다.
@@ -42,12 +49,15 @@ async def log_requests(request: Request, call_next):
     try:
         response = await call_next(request)  # 실제 경로 함수가 여기서 실행됩니다.
     except Exception:
-        info["duration_ms"] = round((time.perf_counter() - start) * 1000, 1)
-        logger.exception("처리하지 못한 오류", extra={**info, "status": 500})
-        raise  # 응답은 FastAPI의 기본 처리에 맡깁니다. 보안 단원에서 안전한 오류 응답으로 바꿉니다.
+        # 자세한 내용은 로그에만 남기고, 사용자에게는 정해진 문구와 요청 ID만 보냅니다.
+        logger.exception("처리하지 못한 오류", extra=info)
+        response = JSONResponse(status_code=500, content={
+            "code": "INTERNAL_ERROR",
+            "message": "요청을 처리하지 못했습니다. 문제가 계속되면 요청 ID를 알려 주세요.",
+            "request_id": request_id_var.get(),
+        })
     duration_ms = round((time.perf_counter() - start) * 1000, 1)
     response.headers["X-Request-ID"] = request_id_var.get()
-    response.headers["X-Process-Time"] = f"{duration_ms}ms"
     logger.info("요청 처리", extra={**info, "status": response.status_code, "duration_ms": duration_ms})
     return response
 
@@ -66,6 +76,16 @@ def handle_app_error(request: Request, exc: AppError):
         content={"code": exc.code, "message": exc.message},
         headers=exc.headers,
     )
+
+@app.exception_handler(RequestValidationError)
+def handle_validation_error(request: Request, exc: RequestValidationError):
+    # 기본 422 응답은 보낸 값(input)을 그대로 되돌려 줍니다. 비밀번호가 응답에 실리지 않게 위치와 이유만 남깁니다.
+    errors = [{"loc": list(e["loc"]), "msg": e["msg"], "type": e["type"]} for e in exc.errors()]
+    return JSONResponse(status_code=422, content={
+        "code": "VALIDATION_ERROR",
+        "message": "요청 값이 올바르지 않습니다.",
+        "errors": errors,
+    })
 
 @app.get("/", tags=["기본"])
 def read_root():

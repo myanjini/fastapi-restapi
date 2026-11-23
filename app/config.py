@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -14,6 +16,7 @@ class Settings(BaseSettings):
         hide_input_in_errors=True,  # 설정 오류 메시지에 입력한 값(비밀 키)을 찍지 않습니다.
     )
 
+    app_env: Literal["development", "production"] = "development"  # 운영이면 production
     app_name: str = "도서 관리 API"
     database_url: str = "sqlite:///./books.db"
     secret_key: str  # 기본값이 없으므로 반드시 설정해야 합니다.

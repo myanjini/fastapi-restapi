@@ -23,4 +23,5 @@ USER appuser
 
 # 7. 컨테이너가 시작할 때 실행할 명령
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# --no-server-header: 응답에 서버 프로그램 이름(uvicorn)을 알리지 않습니다.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-server-header"]

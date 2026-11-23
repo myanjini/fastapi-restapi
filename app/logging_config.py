@@ -5,6 +5,8 @@ import sys
 from contextvars import ContextVar
 from datetime import datetime, timezone
 
+from app.privacy import mask_text
+
 # 지금 처리 중인 요청의 ID. 요청마다 따로 보관됩니다.
 request_id_var: ContextVar[str] = ContextVar("request_id", default="-")
 
@@ -17,14 +19,14 @@ class JsonFormatter(logging.Formatter):
             "time": datetime.fromtimestamp(record.created, timezone.utc).isoformat(timespec="milliseconds"),
             "level": record.levelname,
             "logger": record.name,
-            "message": record.getMessage(),
+            "message": mask_text(record.getMessage()),
             "request_id": request_id_var.get(),
         }
         for key, value in record.__dict__.items():  # extra로 넘긴 값을 덧붙입니다.
             if key not in _STANDARD_KEYS:
-                data[key] = value
+                data[key] = mask_text(value) if isinstance(value, str) else value
         if record.exc_info:
-            data["error"] = self.formatException(record.exc_info)
+            data["error"] = mask_text(self.formatException(record.exc_info))
         return json.dumps(data, ensure_ascii=False, default=str)
 
 def setup_logging(level: str = "INFO") -> None:

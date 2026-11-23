@@ -6,7 +6,8 @@ from app.config import settings
 # SQLite는 기본적으로 한 스레드에서만 연결을 쓰게 되어 있어 이 옵션을 끕니다.
 connect_args = {"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
 
-engine = create_engine(settings.database_url, connect_args=connect_args)
+# hide_parameters=True: 오류 메시지와 로그에 SQL의 값(이메일, 해시 등)을 넣지 않습니다.
+engine = create_engine(settings.database_url, connect_args=connect_args, hide_parameters=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False)
 
 class Base(DeclarativeBase):

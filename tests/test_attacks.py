@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.config import Settings
+from app.privacy import mask_text
 from app.routers import files
 from app.services import covers
 from tests.conftest import TEST_KEY
@@ -133,3 +134,25 @@ def test_invalid_tokens_are_rejected(client, make_user, token):
     make_user("user1@example.com")
     response = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 401
+
+def test_unexpected_error_hides_details(client, auth_headers, monkeypatch):
+    def broken(*args, **kwargs):
+        raise RuntimeError("database password is pg-secret-0123")
+    monkeypatch.setattr("app.services.books.list_books", broken)
+
+    response = client.get("/books")
+    body = response.json()
+    assert response.status_code == 500
+    assert body["code"] == "INTERNAL_ERROR"
+    assert body["request_id"] == response.headers["X-Request-ID"]
+    assert "pg-secret" not in response.text and "RuntimeError" not in response.text
+
+def test_validation_error_does_not_echo_input(client):
+    response = client.post("/auth/signup", json={"email": "new@example.com", "password": "my-pw-123"})
+    assert response.status_code == 422
+    assert response.json()["code"] == "VALIDATION_ERROR"
+    assert "my-pw-123" not in response.text
+
+def test_mask_text():
+    line = "user1@example.com eyJhbGciOi.eyJzdWIiOi.abc $argon2id$v=19$m=65536$salt$hash"
+    assert mask_text(line) == "us***@example.com [TOKEN] [PASSWORD_HASH]"
